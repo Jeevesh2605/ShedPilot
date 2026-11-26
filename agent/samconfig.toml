@@ -1,0 +1,17 @@
+version = 0.1
+
+# THE ONE SETTING: which region the agent runs in.
+# Currently Singapore (ap-southeast-1): the account's Lambda concurrency limit is 10 per region,
+# and a spike on reports-api (Mumbai) uses all 10 there. Here the agent has its own 10, so a spike
+# can never throttle it. Switch back to ap-south-1 once the quota is raised.
+[default.global.parameters]
+stack_name = "shedpilot-agent"
+region = "ap-southeast-1"
+
+[default.build.parameters]
+cached = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+resolve_s3 = true
+confirm_changeset = true

@@ -1,0 +1,23 @@
+# Slack app manifest for ShedPilot.
+# Use it at https://api.slack.com/apps -> Create New App -> From a manifest.
+display_information:
+  name: ShedPilot
+  description: AI SRE agent that proposes load shedding with feature flags. A human approves every change.
+  background_color: "#1d2433"
+features:
+  bot_user:
+    display_name: ShedPilot
+    always_online: true
+oauth_config:
+  scopes:
+    bot:
+      - chat:write   # post incident messages and update them after approval
+settings:
+  # Phase 3: turn on and set the request URL to the agent stack's SlackInteractivityUrl output,
+  # either here or in the app settings under Interactivity & Shortcuts.
+  interactivity:
+    is_enabled: false
+    # request_url: https://<id>.lambda-url.ap-southeast-1.on.aws/
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

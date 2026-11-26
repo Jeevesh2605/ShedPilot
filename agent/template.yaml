@@ -1,0 +1,338 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ShedPilot agent stack: incident table and the agent Lambdas.
+  Deploy with scripts/deploy-agent.sh, which reads the app stack's outputs and passes them in.
+  It can run in the same region as the app or in another one (agent/samconfig.toml).
+
+Parameters:
+  TargetRegion:
+    Type: String
+    Description: Region of the app stack (reports-api, its alarms, logs and metrics).
+  SecretsRegion:
+    Type: String
+    Description: Region holding the /shedpilot/* SSM parameters.
+  AlarmTopicArn:
+    Type: String
+  ReportsFunctionName:
+    Type: String
+  ReportsApiId:
+    Type: String
+  ReportsLogGroup:
+    Type: String
+  SlackChannelId:
+    Type: String
+  FlagsmithProjectId:
+    Type: String
+  FlagsmithEnvironmentKey:
+    Type: String
+    Description: The environment's client-side key. It is public by design, so it is not a secret.
+  EvidenceWindowMinutes:
+    Type: Number
+    Default: 5
+  EvidenceSettleSeconds:
+    Type: Number
+    Default: 60
+    Description: How long the investigator waits after an alarm for CloudWatch metrics to arrive.
+  LlmProvider:
+    Type: String
+    Default: groq
+    AllowedValues: [groq, xai, none, rogue-demo]
+    Description: >
+      Who proposes the action. groq = Groq (gsk_ keys), xai = xAI Grok (xai- keys), none = rules only,
+      rogue-demo = a scripted misbehaving model that proposes checkout_core, to show the guardrail (demo only).
+  LlmModel:
+    Type: String
+    Default: openai/gpt-oss-120b
+    Description: Model ID for the chosen provider. For Groq it must support strict structured outputs.
+  RecoveryEveryMinutes:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    Description: How often the recovery check runs. 10 is the documented default; use 1 for the demo.
+  HealthyMinutes:
+    Type: Number
+    Default: 3
+    Description: Consecutive healthy minutes required before proposing to turn flags back on.
+  HealthyP90Ms:
+    Type: Number
+    Default: 1500
+    Description: API p90 latency must stay under this (ms) to count as healthy.
+  ConcurrencyLimit:
+    Type: Number
+    Default: 10
+    Description: reports-api's concurrency limit (the account limit of 10 today; 5 with reserved concurrency).
+  HeadroomFraction:
+    Type: String
+    Default: '0.6'
+    Description: Re-enabling may use at most this share of the concurrency limit.
+  RestoreCooldownMinutes:
+    Type: Number
+    Default: 10
+    Description: After "Keep disabled", wait this long before proposing again.
+  ApprovalTimeoutMinutes:
+    Type: Number
+    Default: 30
+    Description: A shedding proposal older than this can no longer be approved (its evidence is stale).
+  DryRun:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: When 'true', the executor logs what it would change in Flagsmith and changes nothing.
+  ApproverUserIds:
+    Type: String
+    Default: ''
+    Description: Comma-separated Slack user IDs allowed to approve. Empty means anyone in the channel.
+
+Conditions:
+  RecoveryEveryMinute: !Equals [!Ref RecoveryEveryMinutes, 1]
+  CrossRegionAlarm: !Not [!Equals [!Ref TargetRegion, !Ref 'AWS::Region']]
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [arm64]
+    MemorySize: 512
+    Environment:
+      Variables:
+        NODE_OPTIONS: --enable-source-maps
+        TABLE_NAME: !Ref IncidentsTable
+        SECRETS_REGION: !Ref SecretsRegion
+        SLACK_CHANNEL_ID: !Ref SlackChannelId
+        SLACK_BOT_TOKEN_PARAM: /shedpilot/slack-bot-token
+        FLAGSMITH_ADMIN_KEY_PARAM: /shedpilot/flagsmith-admin-key
+        FLAGSMITH_PROJECT_ID: !Ref FlagsmithProjectId
+        FLAGSMITH_ENVIRONMENT_KEY: !Ref FlagsmithEnvironmentKey
+        HEALTHY_MINUTES: !Ref HealthyMinutes
+        RESTORE_COOLDOWN_MINUTES: !Ref RestoreCooldownMinutes
+        APPROVAL_TIMEOUT_MINUTES: !Ref ApprovalTimeoutMinutes
+
+Resources:
+  # One on-demand table for incidents, their audit trail and the open-incident lock.
+  IncidentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: shedpilot-incidents
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+
+  InvestigatorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/shedpilot-investigator
+      RetentionInDays: 7
+
+  InvestigatorFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: InvestigatorLogGroup
+    Properties:
+      FunctionName: shedpilot-investigator
+      Description: Gathers evidence when an alarm fires, proposes a minimal shedding action, asks a human in Slack.
+      CodeUri: ./
+      Handler: handler.handler
+      Timeout: 240   # settle wait (60 s) + evidence (~10 s) + up to two LLM calls of at most 45 s each
+      Environment:
+        Variables:
+          LLM_PROVIDER: !Ref LlmProvider
+          LLM_MODEL: !Ref LlmModel
+          XAI_API_KEY_PARAM: /shedpilot/xai-api-key
+          GROQ_API_KEY_PARAM: /shedpilot/groq-api-key
+          TARGET_REGION: !Ref TargetRegion
+          REPORTS_FUNCTION_NAME: !Ref ReportsFunctionName
+          REPORTS_API_ID: !Ref ReportsApiId
+          REPORTS_LOG_GROUP: !Ref ReportsLogGroup
+          EVIDENCE_WINDOW_MINUTES: !Ref EvidenceWindowMinutes
+          EVIDENCE_SETTLE_SECONDS: !Ref EvidenceSettleSeconds
+      EventInvokeConfig:
+        MaximumRetryAttempts: 1          # the incident lock makes a retry harmless
+        MaximumEventAgeInSeconds: 600    # an alarm older than 10 minutes is no longer useful
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref IncidentsTable }
+        - Statement:
+            - Sid: ReadMetrics
+              Effect: Allow
+              Action: cloudwatch:GetMetricData
+              Resource: '*'   # GetMetricData does not support resource-level permissions
+            - Sid: QueryReportsLogsOnly
+              Effect: Allow
+              Action: logs:StartQuery
+              Resource: !Sub arn:${AWS::Partition}:logs:${TargetRegion}:${AWS::AccountId}:log-group:${ReportsLogGroup}:*
+            - Sid: ReadQueryResults
+              Effect: Allow
+              Action: logs:GetQueryResults
+              Resource: '*'   # GetQueryResults does not support resource-level permissions
+            - Sid: ReadOwnSecrets
+              Effect: Allow
+              Action: ssm:GetParameter
+              Resource:
+                - !Sub arn:${AWS::Partition}:ssm:${SecretsRegion}:${AWS::AccountId}:parameter/shedpilot/slack-bot-token
+                - !Sub arn:${AWS::Partition}:ssm:${SecretsRegion}:${AWS::AccountId}:parameter/shedpilot/flagsmith-admin-key
+                - !Sub arn:${AWS::Partition}:ssm:${SecretsRegion}:${AWS::AccountId}:parameter/shedpilot/xai-api-key
+                - !Sub arn:${AWS::Partition}:ssm:${SecretsRegion}:${AWS::AccountId}:parameter/shedpilot/groq-api-key
+      Events:
+        Alarms:
+          Type: SNS
+          Properties:
+            Topic: !Ref AlarmTopicArn
+            Region: !Ref TargetRegion   # works across regions
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [investigator/handler.ts]
+        Target: node22
+        Minify: true
+        Sourcemap: true
+
+  # Explicit permission for opt-in source regions (e.g. ap-east-1), which require a regional SNS principal.
+  InvestigatorCrossRegionSnsPermission:
+    Type: AWS::Lambda::Permission
+    Condition: CrossRegionAlarm
+    Properties:
+      FunctionName: !Ref InvestigatorFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub sns.${TargetRegion}.amazonaws.com
+      SourceArn: !Ref AlarmTopicArn
+
+  # ---- Phase 3: human decision -> flag change -------------------------------------------------
+
+  SlackCallbackLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/shedpilot-slack-callback
+      RetentionInDays: 7
+
+  # Public endpoint for Slack button clicks. Every request must carry a valid Slack signature.
+  SlackCallbackFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: SlackCallbackLogGroup
+    Properties:
+      FunctionName: shedpilot-slack-callback
+      Description: Verifies Slack button clicks, records the human decision, hands off to the executor.
+      CodeUri: ./
+      Handler: handler.handler
+      Timeout: 10
+      FunctionUrlConfig:
+        AuthType: NONE   # Slack can't sign AWS requests; the handler verifies Slack's own signature
+      Environment:
+        Variables:
+          SLACK_SIGNING_SECRET_PARAM: /shedpilot/slack-signing-secret
+          EXECUTOR_FUNCTION_NAME: !Ref ExecutorFunction
+          APPROVER_USER_IDS: !Ref ApproverUserIds
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref IncidentsTable }
+        - LambdaInvokePolicy: { FunctionName: !Ref ExecutorFunction }
+        - Statement:
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:${AWS::Partition}:ssm:${SecretsRegion}:${AWS::AccountId}:parameter/shedpilot/slack-signing-secret
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [slack-callback/handler.ts]
+        Target: node22
+        Minify: true
+        Sourcemap: true
+
+  ExecutorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/shedpilot-executor
+      RetentionInDays: 7
+
+  # The only function that can change flags. Only slack-callback may invoke it.
+  ExecutorFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ExecutorLogGroup
+    Properties:
+      FunctionName: shedpilot-executor
+      Description: After a recorded human approval, re-checks and changes flags in Flagsmith, then updates Slack.
+      CodeUri: ./
+      Handler: handler.handler
+      Timeout: 60
+      Environment:
+        Variables:
+          DRY_RUN: !Ref DryRun
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0   # never re-run a half-finished flag change automatically
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref IncidentsTable }
+        - Statement:
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource:
+                - !Sub arn:${AWS::Partition}:ssm:${SecretsRegion}:${AWS::AccountId}:parameter/shedpilot/slack-bot-token
+                - !Sub arn:${AWS::Partition}:ssm:${SecretsRegion}:${AWS::AccountId}:parameter/shedpilot/flagsmith-admin-key
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [executor/handler.ts]
+        Target: node22
+        Minify: true
+        Sourcemap: true
+
+  # ---- Phase 5: recovery loop -----------------------------------------------------------------
+
+  RecoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/shedpilot-recovery
+      RetentionInDays: 7
+
+  RecoveryFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: RecoveryLogGroup
+    Properties:
+      FunctionName: shedpilot-recovery
+      Description: On a schedule, proposes turning shed flags back on once it is healthy and safe; expires stale proposals.
+      CodeUri: ./
+      Handler: handler.handler
+      Timeout: 60
+      Environment:
+        Variables:
+          TARGET_REGION: !Ref TargetRegion
+          REPORTS_FUNCTION_NAME: !Ref ReportsFunctionName
+          REPORTS_API_ID: !Ref ReportsApiId
+          REPORTS_LOG_GROUP: !Ref ReportsLogGroup
+          HEALTHY_P90_MS: !Ref HealthyP90Ms
+          CONCURRENCY_LIMIT: !Ref ConcurrencyLimit
+          HEADROOM_FRACTION: !Ref HeadroomFraction
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref IncidentsTable }
+        - Statement:
+            - Effect: Allow
+              Action: cloudwatch:GetMetricData
+              Resource: '*'
+            - Effect: Allow
+              Action: logs:StartQuery
+              Resource: !Sub arn:${AWS::Partition}:logs:${TargetRegion}:${AWS::AccountId}:log-group:${ReportsLogGroup}:*
+            - Effect: Allow
+              Action: logs:GetQueryResults
+              Resource: '*'
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:${AWS::Partition}:ssm:${SecretsRegion}:${AWS::AccountId}:parameter/shedpilot/slack-bot-token
+      Events:
+        Schedule:
+          Type: Schedule
+          Properties:
+            # EventBridge wants "rate(1 minute)" but "rate(10 minutes)".
+            Schedule: !If [RecoveryEveryMinute, 'rate(1 minute)', !Sub 'rate(${RecoveryEveryMinutes} minutes)']
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [recovery/handler.ts]
+        Target: node22
+        Minify: true
+        Sourcemap: true
+
+Outputs:
+  IncidentsTableName:
+    Value: !Ref IncidentsTable
+  SlackInteractivityUrl:
+    Description: Paste this into the Slack app under Interactivity & Shortcuts -> Request URL.
+    Value: !GetAtt SlackCallbackFunctionUrl.FunctionUrl

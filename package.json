@@ -1,0 +1,29 @@
+{
+  "name": "shedpilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI SRE agent that sheds load with Flagsmith feature flags, with a human approving in Slack",
+  "type": "module",
+  "scripts": {
+    "build": "sam build",
+    "deploy:app": "sam build && sam deploy",
+    "deploy:agent": "./scripts/deploy-agent.sh",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "bench": "tsx scripts/bench-features.ts",
+    "seed": "tsx scripts/seed-flags.ts",
+    "load:baseline": "tsx loadtest/run.ts baseline",
+    "load:spike": "tsx loadtest/run.ts spike",
+    "local": "tsx scripts/local-server.ts",
+    "llm:try": "tsx agent/scripts/try-llm.ts",
+    "load:demo": "tsx loadtest/run.ts demo"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.164",
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.25.12",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

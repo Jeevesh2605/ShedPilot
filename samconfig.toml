@@ -1,0 +1,18 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "shedpilot"
+region = "ap-south-1"
+
+[default.build.parameters]
+cached = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+resolve_s3 = true
+confirm_changeset = true
+# Your account's Lambda concurrency quota is 10, so AWS refuses any reservation.
+# Change to ReservedConcurrency=5 once the quota increase is approved (docs/SETUP.md, step 1).
+# Tuning knobs live here too. For an existing stack, sam deploy keeps each parameter's previous value
+# unless it is listed here, so changing a Default in template.yaml alone has no effect.
+parameter_overrides = "ReservedConcurrency=0 PdfPages=110 AnalyticsRows=400000"

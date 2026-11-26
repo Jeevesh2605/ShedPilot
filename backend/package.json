@@ -1,0 +1,17 @@
+{
+  "name": "shedpilot-reports-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Demo backend whose expensive features are gated by Flagsmith flags",
+  "type": "commonjs",
+  "dependencies": {
+    "@aws-sdk/client-ssm": "^3.700.0",
+    "@flagsmith/nodejs": "^9.0.0",
+    "pdfkit": "^0.17.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/pdfkit": "^0.13.9",
+    "esbuild": "^0.25.0"
+  }
+}

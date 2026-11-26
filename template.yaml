@@ -1,0 +1,150 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ShedPilot - AI SRE agent that sheds load with Flagsmith feature flags.
+  App stack: the demo backend (reports-api), plus the alarms that watch it and the SNS topic they
+  publish to. The agent lives in a separate stack (agent/template.yaml) so it can run in another region.
+
+Parameters:
+  ReservedConcurrency:
+    Type: Number
+    Default: 5
+    MinValue: 0
+    Description: >
+      Reserved concurrency for reports-api. Requests above this are throttled, which is the
+      overload signal for the demo. 0 means "do not reserve", which is needed while the account's
+      Lambda concurrency quota is still 10 (AWS refuses to reserve below 10 unreserved).
+  ReportsMemoryMb:
+    Type: Number
+    Default: 512
+    Description: Lambda memory for reports-api. Lambda CPU share scales with memory.
+  PdfPages:
+    Type: String
+    Default: '110'
+    Description: Pages per PDF report. Tune so one report takes 2 to 4 s (see feature_timings_ms).
+  AnalyticsRows:
+    Type: String
+    Default: '400000'
+    Description: Rows aggregated by rich_analytics. Tune to about 1 s.
+  LatencyThresholdMs:
+    Type: Number
+    Default: 2500
+    Description: API p90 latency (ms) above which the latency alarm fires. The Phase 1 spike measured about 3,500.
+  FlagsmithServerKeyParam:
+    Type: String
+    Default: /shedpilot/flagsmith-server-key
+    Description: SSM SecureString parameter holding the Flagsmith server-side environment key (ser.xxx).
+
+Conditions:
+  UseReservedConcurrency: !Not [!Equals [!Ref ReservedConcurrency, 0]]
+
+Globals:
+  Function:
+    Runtime: nodejs22.x   # nodejs20.x was deprecated on 2026-04-30, see docs/SETUP.md
+    Architectures: [arm64]
+
+Resources:
+  ReportsHttpApi:
+    Type: AWS::Serverless::HttpApi
+
+  # Created explicitly so that "sam delete" also removes the logs, and so they expire after 7 days.
+  ReportsApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/shedpilot-reports-api
+      RetentionInDays: 7
+
+  ReportsApiFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ReportsApiLogGroup
+    Properties:
+      FunctionName: shedpilot-reports-api
+      Description: Demo backend. Each expensive feature is gated by a Flagsmith flag.
+      CodeUri: backend/
+      Handler: handler.handler
+      MemorySize: !Ref ReportsMemoryMb
+      Timeout: 15
+      ReservedConcurrentExecutions: !If [UseReservedConcurrency, !Ref ReservedConcurrency, !Ref AWS::NoValue]
+      Environment:
+        Variables:
+          FLAGSMITH_SERVER_KEY_PARAM: !Ref FlagsmithServerKeyParam
+          PDF_PAGES: !Ref PdfPages
+          ANALYTICS_ROWS: !Ref AnalyticsRows
+          NODE_OPTIONS: --enable-source-maps
+      Policies:
+        # Least privilege: read exactly one parameter. The AWS-managed aws/ssm key decrypts it.
+        - Statement:
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${FlagsmithServerKeyParam}
+      Events:
+        Reports:
+          Type: HttpApi
+          Properties: { ApiId: !Ref ReportsHttpApi, Method: GET, Path: /api/reports }
+        Summary:
+          Type: HttpApi
+          Properties: { ApiId: !Ref ReportsHttpApi, Method: GET, Path: /api/reports/summary }
+        Checkout:
+          Type: HttpApi
+          Properties: { ApiId: !Ref ReportsHttpApi, Method: GET, Path: /api/checkout }
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handler.ts]
+        Target: node22
+        Minify: true
+        Sourcemap: true
+
+  # ---- Detection: alarms -> SNS -> investigator (in the agent stack) ----------------------------
+
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: shedpilot-alarms
+
+  # Primary signal. Requests above the concurrency limit are rejected (throttled), not queued.
+  ThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: shedpilot-reports-api-throttles
+      AlarmDescription: reports-api is rejecting requests because it is out of concurrency.
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions: [{ Name: FunctionName, Value: !Ref ReportsApiFunction }]
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopic]
+
+  LatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: shedpilot-reports-api-latency-p90
+      AlarmDescription: reports-api p90 latency is above the threshold.
+      Namespace: AWS/ApiGateway
+      MetricName: Latency
+      Dimensions: [{ Name: ApiId, Value: !Ref ReportsHttpApi }]
+      ExtendedStatistic: p90
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: !Ref LatencyThresholdMs
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopic]
+
+Outputs:
+  ApiUrl:
+    Description: Base URL of reports-api
+    Value: !Sub https://${ReportsHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+  ApiId:
+    Value: !Ref ReportsHttpApi
+  ReportsFunctionName:
+    Value: !Ref ReportsApiFunction
+  ReportsLogGroup:
+    Value: !Ref ReportsApiLogGroup
+  AlarmTopicArn:
+    Description: SNS topic the alarms publish to. The agent stack subscribes to it.
+    Value: !Ref AlarmTopic

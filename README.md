@@ -5,7 +5,7 @@
 Toggle Wars: The Flagsmith Experimentation Hackathon (WeMakeDevs x Flagsmith), Track 02: AI Agents and Feature Flags.
 
 - **Demo video:** TODO: add link
-- **Repo:** TODO: add link
+- **Repo:** https://github.com/Jeevesh2605/ShedPilot
 - **Data:** 100% synthetic. The traffic comes from a load-test script against a demo API. No real users, no real data.
 
 ---
@@ -44,7 +44,7 @@ The full incident state machine, DynamoDB schema and decision log are in [docs/A
 
 ### Demo backend (`reports-api`)
 
-One Lambda behind API Gateway with reserved concurrency `TODO: confirm value from template.yaml (observed peak: 10)`. All slowness comes from real work: PDFs are generated with `pdfkit`, and aggregation is a real CPU-bound loop. There are no `sleep` calls.
+One Lambda behind API Gateway (`ReservedConcurrency` defaults to `5` in [template.yaml](template.yaml), overridden to `0` in [samconfig.toml](samconfig.toml) while the AWS account's regional Lambda concurrency quota is `10`, giving the observed peak of `10`). All slowness comes from real work: PDFs are generated with `pdfkit`, and aggregation is a real CPU-bound loop. There are no `sleep` calls.
 
 | Route | Flag | Sheddable | Behaviour when the flag is off |
 |---|---|---|---|
@@ -102,7 +102,7 @@ The agent reads production metrics and proposes changes to production. Safety li
 
 ### Guardrail proof (red team)
 
-`checkout_core` is not tagged `load-sheddable`, so no proposal that includes it can reach approval, even if the model suggests it. This is tested in `agent/test/` and can be demonstrated live with `TODO: document the red-team switch or test command`. A blocked proposal appears in Slack like this:
+`checkout_core` is not tagged `load-sheddable`, so no proposal that includes it can reach approval, even if the model suggests it. This is tested in [tests/guardrails.test.ts](tests/guardrails.test.ts) and [tests/llmProposal.test.ts](tests/llmProposal.test.ts), and can be demonstrated locally with `LLM_PROVIDER=rogue-demo npm run llm:try` (or `npm run llm:try -- --scenario checkout-hot`) and live in Slack by deploying with `LLM_PROVIDER=rogue-demo ./scripts/deploy-agent.sh --no-confirm-changeset` (then switching back with `./scripts/deploy-agent.sh --no-confirm-changeset`). A blocked proposal appears in Slack like this:
 
 ```text
 🛡️ Blocked by the guardrail (never offered for approval):
@@ -168,11 +168,37 @@ Incident inc-20261127-045609-4165 · proposed by openai/gpt-oss-120b in 2.5 s
 
 ### Incident report
 
-TODO: paste the final incident report from a Nov 27 or later run that completed the recovery step. Do not reuse an older sample.
+From run 3 (`inc-20261127-045609-4165`), showing recovery holding off while traffic was still arriving (`05:02:38`) before proposing restore and resolving:
+
+```text
+📋 Incident report: inc-20261127-045609-4165
+Service: reports-api   Flags shed: pdf_export
+Evidence window: 04:52:10 UTC – 04:57:10 UTC   Total time degraded: 7 min   Alarm to proposal: 1 min   Alarm to resolution: 9 min
+Shed approved by: <approver>   Restore approved by: <approver>
+
+Cause (measured): pdf_export used 92% of compute (227 requests, avg 3237 ms). 286 requests were throttled and concurrency peaked at 10.
+Proposed by: openai/gpt-oss-120b
+
+Timeline (UTC)
+04:56:10  Alarm shedpilot-reports-api-latency-p90 received, investigation started
+04:56:54  Alarm shedpilot-reports-api-throttles fired again while this incident was open
+04:57:18  Proposed turning off pdf_export; waiting for human approval
+04:57:28  Approved by <approver> in Slack
+04:57:36  Turned off pdf_export in Flagsmith
+04:57:36  Load shed: pdf_export turned off, approved by <approver>
+04:57:38  Recovery check: not yet, shed 0 min ago; waiting for 2 complete healthy minutes
+05:01:38  Recovery check: not yet, still throttling: 182 throttled requests in the last 2 min
+05:02:38  Recovery check: not yet, healthy, but only because the flag is off: re-enabling now would need about 0.4 executions and only 0 are free (60% of 10 minus 6 in use)
+05:03:37  Recovery check: ready, healthy for 2 min, and no traffic is waiting on the disabled flags
+05:03:38  Proposed turning pdf_export back on; waiting for human approval
+05:04:47  Approved by <approver> in Slack
+05:04:53  Turned on pdf_export in Flagsmith
+05:04:53  Resolved: pdf_export back on, approved by <approver>
+```
 
 ## Run it locally
 
-Requirements: Node.js 20+, AWS SAM CLI, an AWS account, a Flagsmith Cloud project, a Slack app, and a Groq or xAI API key. Full steps are in [docs/SETUP.md](docs/SETUP.md).
+Requirements: Node.js 22+, AWS SAM CLI, an AWS account, a Flagsmith Cloud project, a Slack app, and a Groq or xAI API key. Full steps are in [docs/SETUP.md](docs/SETUP.md).
 
 ```bash
 npm install
@@ -193,7 +219,7 @@ Useful commands:
 
 ```bash
 npm run typecheck
-npm test                        # TODO: add test count
+npm test                        # 12 test files, 92 tests
 npm run llm:try                 # one LLM proposal on sample evidence, no AWS needed
 
 RECOVERY_EVERY_MINUTES=1 HEALTHY_MINUTES=2 ./scripts/deploy-agent.sh   # fast recovery loop for demos
@@ -201,7 +227,7 @@ npm run load:spike              # 180 s overload
 npm run load:demo               # 300 s run used in the Results section
 ```
 
-The demo settings above shorten the recovery loop. The real defaults are a 10-minute schedule and `TODO: default HEALTHY_MINUTES`.
+The demo settings above shorten the recovery loop. The real defaults are a 10-minute schedule (`RecoveryEveryMinutes=10`) and `3` consecutive healthy minutes (`HealthyMinutes=3`).
 
 Teardown removes both CloudFormation stacks, log groups, the DynamoDB table, the alarms and the `/shedpilot/*` SSM parameters:
 
@@ -230,9 +256,10 @@ agent/                   investigator, slack-callback, executor, recovery
 agent/lib/guardrails.ts  checkShedActions and checkRestoreFlags
 agent/lib/slackVerify.ts Slack HMAC-SHA256 + replay-window verification
 agent/lib/proposalParser.ts  strict LLM JSON parsing
+tests/                   unit tests (12 files, 92 tests)
 loadtest/run.ts          open-loop load generator (baseline, spike, demo)
 scripts/                 seed-flags.ts, put-secrets.sh, deploy-agent.sh, teardown.sh
-docs/                    ARCHITECTURE.md, SETUP.md, slack-app-manifest.yaml, architecture diagram
+docs/                    ARCHITECTURE.md, SETUP.md, DEMO_SCRIPT.md, slack-app-manifest.yaml, architecture-diagram.svg
 ```
 
 ## Disclosures

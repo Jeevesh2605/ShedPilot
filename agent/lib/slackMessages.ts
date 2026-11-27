@@ -58,6 +58,7 @@ export function alarmTime(raw: string): string {
 
 function evidenceBlocks(evidence: Evidence): unknown[] {
   const t = evidence.metrics.totals;
+  const window = `${alarmTime(evidence.metrics.windowStart)} – ${alarmTime(evidence.metrics.windowEnd)}`;
   const rows = evidence.logs.features.map(
     (f) =>
       `${f.flag.padEnd(16)} ${String(f.requests).padStart(8)} ${String(f.avgMs).padStart(7)} ${String(f.p90Ms).padStart(7)} ${pct(f.computeShare).padStart(6)}`,
@@ -67,13 +68,16 @@ function evidenceBlocks(evidence: Evidence): unknown[] {
   return [
     {
       type: 'section',
-      text: { type: 'mrkdwn', text: `*What's wrong*\nAlarm \`${evidence.alarm.name}\` fired at ${alarmTime(evidence.alarm.time)}.` },
+      text: {
+        type: 'mrkdwn',
+        text: `*What's wrong*\nAlarm \`${evidence.alarm.name}\` fired at ${alarmTime(evidence.alarm.time)}.\n*Evidence window:* \`${window}\` (queried after settle wait).`,
+      },
     },
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Throttled requests (5 min)*\n${num(t.throttles)}` },
-        { type: 'mrkdwn', text: `*API 5xx (5 min)*\n${num(t.api5xx)}` },
+        { type: 'mrkdwn', text: `*Throttled requests (window)*\n${num(t.throttles)}` },
+        { type: 'mrkdwn', text: `*API 5xx (window)*\n${num(t.api5xx)}` },
         { type: 'mrkdwn', text: `*Peak Lambda concurrency*\n${t.peakConcurrency}` },
         { type: 'mrkdwn', text: `*Worst-minute API p90*\n${secs(t.worstMinuteApiLatencyP90Ms)}` },
         { type: 'mrkdwn', text: `*Served requests (logs)*\n${num(evidence.logs.servedRequests)}` },
@@ -84,12 +88,12 @@ function evidenceBlocks(evidence: Evidence): unknown[] {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*Where the compute went* (served requests, last 5 min)\n\`\`\`${rows.length ? table : 'No feature timings in the logs.'}\`\`\``,
+        text: `*Where the compute went* (served requests, \`${window}\`)\n\`\`\`${rows.length ? table : 'No feature timings in the logs.'}\`\`\``,
       },
     },
     {
       type: 'context',
-      elements: [{ type: 'mrkdwn', text: 'CloudWatch is still filling in the most recent minute, so counts during an ongoing spike are a lower bound.' }],
+      elements: [{ type: 'mrkdwn', text: 'CloudWatch is still filling in the most recent minute, so metric counts can trail Logs Insights during an ongoing spike.' }],
     },
   ];
 }
@@ -402,9 +406,10 @@ export function incidentReportMessage(r: ReportInput): SlackMessage {
     .map((e) => `${e.at.slice(11, 19)}  ${e.message}`)
     .join('\n')
     .slice(0, 2600);
+  const window = `${alarmTime(r.evidence.metrics.windowStart)} – ${alarmTime(r.evidence.metrics.windowEnd)}`;
   const summary = [
     `*Service:* reports-api   *Flags shed:* ${r.shedFlags.map((f) => `\`${f}\``).join(', ') || 'none'}`,
-    `*Total time degraded:* ${r.shedAt ? duration(r.shedAt, r.resolvedAt) : 'n/a'}   *Alarm to proposal:* ${proposalAt ? duration(r.createdAt, proposalAt) : 'n/a'}   *Alarm to resolution:* ${duration(r.createdAt, r.resolvedAt)}`,
+    `*Evidence window:* \`${window}\`   *Total time degraded:* ${r.shedAt ? duration(r.shedAt, r.resolvedAt) : 'n/a'}   *Alarm to proposal:* ${proposalAt ? duration(r.createdAt, proposalAt) : 'n/a'}   *Alarm to resolution:* ${duration(r.createdAt, r.resolvedAt)}`,
     `*Shed approved by:* ${r.shedDecision ? `<@${r.shedDecision.userId}>` : 'n/a'}   *Restore approved by:* ${r.restoreDecision ? `<@${r.restoreDecision.userId}>` : 'n/a'}`,
   ].join('\n');
   const cause = top

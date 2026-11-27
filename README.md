@@ -149,11 +149,15 @@ Diagnosis
 The Lambda hit its concurrency limit (peakConcurrency 10) and throttled 676 requests.
 Served logs show 638 requests, with pdf_export responsible for 476 requests and 94.7% of total compute (avg 3255 ms).
 
-Throttled requests (5 min): 676     API 5xx (5 min): 676
-Peak Lambda concurrency:    10      Worst-minute API p90: 3.6 s
-Served requests (logs):     638     Lambda errors: 0
+What's wrong
+Alarm shedpilot-reports-api-throttles fired at 08:20:17 UTC.
+Evidence window: 08:16:20 UTC – 08:21:20 UTC (queried after settle wait).
 
-Where the compute went (served requests, last 5 min)
+Throttled requests (window): 676     API 5xx (window): 676
+Peak Lambda concurrency:     10      Worst-minute API p90: 3.6 s
+Served requests (logs):      638     Lambda errors: 0
+
+Where the compute went (served requests, 08:16:20 UTC – 08:21:20 UTC)
 flag             requests  avg ms  p90 ms  share
 pdf_export            476    3255    4120    95%
 rich_analytics         82     715     980     4%
@@ -176,7 +180,7 @@ Incident inc-20261114-082017-d970 · proposed by openai/gpt-oss-120b in 2.4 s ·
 ```text
 📋 Incident report: inc-20261114-082017-d970
 Service: reports-api   Flags shed: pdf_export
-Total time degraded: 9 min   Alarm to proposal: 1 min   Alarm to resolution: 12 min
+Evidence window: 08:16:20 UTC – 08:21:20 UTC   Total time degraded: 9 min   Alarm to proposal: 1 min   Alarm to resolution: 12 min
 Shed approved by: @jeevesh   Restore approved by: @jeevesh
 
 Cause (measured): pdf_export used 92% of compute (430 requests, avg 3100 ms). 520 requests were throttled and concurrency peaked at 10.

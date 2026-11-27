@@ -17,10 +17,11 @@ describe('Slack investigation message', () => {
     expect(buttons[0].confirm).toBeDefined(); // Approve asks "are you sure?"
   });
 
-  it('shows the measured numbers and the proposed flag', () => {
+  it('shows the measured numbers, exact evidence window, and the proposed flag', () => {
     const text = JSON.stringify(blocks);
     expect(text).toContain('676'); // throttles
     expect(text).toContain('3.6 s'); // worst-minute p90
+    expect(text).toContain('09:21:00 UTC – 09:26:00 UTC');
     expect(text).toContain('turn off `pdf_export`');
     expect(message.text).toContain('pdf_export');
   });

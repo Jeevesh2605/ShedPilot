@@ -104,5 +104,9 @@ export interface FlagChangeResult {
   ok: boolean;
   dryRun: boolean;
   enabledAfter?: boolean; // read back from Flagsmith after the change
+  /** True when one leg succeeded and one failed, so state came from only PATCH or only GET. */
+  unverified?: boolean;
+  /** True when both PATCH and follow-up GET failed, leaving the live flag state unknown. */
+  unknownState?: boolean;
   error?: string;
 }

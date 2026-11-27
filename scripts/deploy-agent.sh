@@ -41,6 +41,7 @@ CONCURRENCY_LIMIT="$(setting CONCURRENCY_LIMIT 10)"
 HEADROOM_FRACTION="$(setting HEADROOM_FRACTION 0.6)"
 RESTORE_COOLDOWN_MINUTES="$(setting RESTORE_COOLDOWN_MINUTES 10)"
 APPROVAL_TIMEOUT_MINUTES="$(setting APPROVAL_TIMEOUT_MINUTES 30)"
+TARGET_REGION_IS_OPT_IN="$(setting TARGET_REGION_IS_OPT_IN false)"
 
 for name in SLACK_CHANNEL_ID FLAGSMITH_PROJECT_ID FLAGSMITH_ENVIRONMENT_KEY; do
   [ -n "$(read_env "$name")" ] || { echo "$name is empty in .env"; exit 1; }
@@ -51,7 +52,7 @@ echo "Agent region: $SHEDPILOT_AGENT_REGION"
 echo "LLM:          $LLM_PROVIDER ($LLM_MODEL)   dry run: $DRY_RUN   approvers: ${APPROVER_USER_IDS:-anyone in the channel}"
 echo "Recovery:     every $RECOVERY_EVERY_MINUTES min, $HEALTHY_MINUTES healthy min, limit $CONCURRENCY_LIMIT, cooldown $RESTORE_COOLDOWN_MINUTES min"
 
-OVERRIDES="TargetRegion=$SHEDPILOT_REGION SecretsRegion=$SHEDPILOT_REGION"
+OVERRIDES="TargetRegion=$SHEDPILOT_REGION TargetRegionIsOptIn=$TARGET_REGION_IS_OPT_IN SecretsRegion=$SHEDPILOT_REGION"
 OVERRIDES+=" AlarmTopicArn=$(output AlarmTopicArn)"
 OVERRIDES+=" ReportsFunctionName=$(output ReportsFunctionName)"
 OVERRIDES+=" ReportsApiId=$(output ApiId)"

@@ -9,6 +9,11 @@ Parameters:
   TargetRegion:
     Type: String
     Description: Region of the app stack (reports-api, its alarms, logs and metrics).
+  TargetRegionIsOptIn:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Set to 'true' only when TargetRegion is an AWS opt-in region (e.g. ap-east-1) requiring sns.<region>.amazonaws.com.
   SecretsRegion:
     Type: String
     Description: Region holding the /shedpilot/* SSM parameters.
@@ -86,7 +91,9 @@ Parameters:
 
 Conditions:
   RecoveryEveryMinute: !Equals [!Ref RecoveryEveryMinutes, 1]
-  CrossRegionAlarm: !Not [!Equals [!Ref TargetRegion, !Ref 'AWS::Region']]
+  CrossRegionOptInAlarm: !And
+    - !Equals [!Ref TargetRegionIsOptIn, 'true']
+    - !Not [!Equals [!Ref TargetRegion, !Ref 'AWS::Region']]
 
 Globals:
   Function:
@@ -191,7 +198,7 @@ Resources:
   # Explicit permission for opt-in source regions (e.g. ap-east-1), which require a regional SNS principal.
   InvestigatorCrossRegionSnsPermission:
     Type: AWS::Lambda::Permission
-    Condition: CrossRegionAlarm
+    Condition: CrossRegionOptInAlarm
     Properties:
       FunctionName: !Ref InvestigatorFunction
       Action: lambda:InvokeFunction

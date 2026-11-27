@@ -8,7 +8,7 @@
  * Phase 1 uses only the read and setup calls. The flag-changing call is added in Phase 3,
  * and only the executor Lambda will use it.
  */
-import type { FlagInfo } from './types';
+import type { FlagChangeResult, FlagInfo } from './types';
 
 export interface FlagsmithAdminConfig {
   apiKey: string;
@@ -227,4 +227,75 @@ export async function getFlagInventory(
       description: f.description,
     }));
   return { environment, flags };
+}
+
+/**
+ * Turns a flag on or off and reads it back to confirm. If PATCH throws after Flagsmith applied
+ * the change (e.g. timeout/reset), one follow-up GET reconciles the real state so shedFlags
+ * never loses track of a changed flag; if both fail, unknownState is marked for human follow-up.
+ */
+export async function setAndVerifyFlag(
+  admin: Pick<FlagsmithAdmin, 'setFlagEnabled' | 'getFlagState'>,
+  environmentKey: string,
+  flag: string,
+  featureId: number,
+  enabled: boolean,
+): Promise<FlagChangeResult> {
+  let patchedEnabled: boolean;
+  try {
+    const patched = await admin.setFlagEnabled(environmentKey, featureId, enabled);
+    patchedEnabled = patched.environment_default.enabled;
+  } catch (patchErr) {
+    const patchMsg = patchErr instanceof Error ? patchErr.message : String(patchErr);
+    try {
+      const actual = await admin.getFlagState(environmentKey, featureId);
+      const actualEnabled = actual.environment_default.enabled;
+      if (actualEnabled === enabled) {
+        return {
+          flag,
+          featureId,
+          ok: true,
+          dryRun: false,
+          enabledAfter: actualEnabled,
+          unverified: true,
+          error: `write call failed (${patchMsg}), but read-back confirmed flag is ${enabled ? 'on' : 'off'}`,
+        };
+      }
+      return { flag, featureId, ok: false, dryRun: false, enabledAfter: actualEnabled, error: patchMsg };
+    } catch (readErr) {
+      const readMsg = readErr instanceof Error ? readErr.message : String(readErr);
+      return {
+        flag,
+        featureId,
+        ok: false,
+        dryRun: false,
+        unknownState: true,
+        error: `write failed (${patchMsg}) and state check failed (${readMsg}); verify in Flagsmith`,
+      };
+    }
+  }
+
+  try {
+    const after = await admin.getFlagState(environmentKey, featureId);
+    const ok = after.environment_default.enabled === enabled;
+    return {
+      flag,
+      featureId,
+      ok,
+      dryRun: false,
+      enabledAfter: after.environment_default.enabled,
+      error: ok ? undefined : `still ${enabled ? 'off' : 'on'} when read back`,
+    };
+  } catch (verifyErr) {
+    const verifyMsg = verifyErr instanceof Error ? verifyErr.message : String(verifyErr);
+    return {
+      flag,
+      featureId,
+      ok: patchedEnabled === enabled,
+      dryRun: false,
+      enabledAfter: patchedEnabled,
+      unverified: true,
+      error: `read-back verification failed: ${verifyMsg}`,
+    };
+  }
 }

@@ -53,6 +53,14 @@ export interface FlagState {
   segment_overrides: unknown[];
 }
 
+/** Response of the v1 environment featurestates endpoint (GET or PATCH). */
+export interface V1FeatureState {
+  id: number;
+  enabled: boolean;
+  feature: number;
+  environment: number;
+}
+
 interface Page<T> {
   count: number;
   next: string | null;
@@ -74,7 +82,8 @@ export class FlagsmithAdmin {
   private readonly host: string;
 
   constructor(private readonly config: FlagsmithAdminConfig) {
-    this.host = (config.host ?? 'https://api.flagsmith.com').replace(/\/+$/, '');
+    const rawHost = config.host?.trim();
+    this.host = (rawHost ? rawHost : 'https://api.flagsmith.com').replace(/\/+$/, '');
   }
 
   // ---- reads -------------------------------------------------------------------------------
@@ -103,17 +112,29 @@ export class FlagsmithAdmin {
     return this.request<FlagState>('GET', `/api/__future__/environments/${environmentKey}/features/${featureId}/`);
   }
 
+  /** Reads a feature state on a v1-versioned environment. */
+  getV1FeatureState(environmentKey: string, featureStateId: number) {
+    return this.request<V1FeatureState>('GET', `/api/v1/environments/${environmentKey}/featurestates/${featureStateId}/`);
+  }
+
   // ---- the one flag-changing call (used only by the executor, after human approval) ---------
 
   /**
    * Turns a flag on or off in an environment. Uses the "update flag" endpoint, which works on
-   * environments with Feature Versioning v2 (ours has it on; the legacy featurestates write
+   * environments with Feature Versioning v2 (ours on Cloud has it on; the legacy featurestates write
    * returns 400 there). PATCH leaves the flag's value and segment overrides unchanged.
    * The environment is addressed by its string api_key: Phase 1 showed the numeric ID returns 404.
    */
   setFlagEnabled(environmentKey: string, featureId: number, enabled: boolean) {
     return this.request<FlagState>('PATCH', `/api/__future__/environments/${environmentKey}/features/${featureId}/`, {
       environment_default: { enabled },
+    });
+  }
+
+  /** Turns a flag on or off on a v1-versioned environment (common on fresh self-hosted installs). */
+  setV1FeatureStateEnabled(environmentKey: string, featureStateId: number, enabled: boolean) {
+    return this.request<V1FeatureState>('PATCH', `/api/v1/environments/${environmentKey}/featurestates/${featureStateId}/`, {
+      enabled,
     });
   }
 
@@ -222,6 +243,7 @@ export async function getFlagInventory(
     .map((f) => ({
       name: f.name,
       id: f.id,
+      featureStateId: f.environment_feature_state?.id,
       enabled: f.environment_feature_state?.enabled ?? f.default_enabled,
       tags: f.tags.map((id) => tagLabel.get(id)).filter((label): label is string => Boolean(label)),
       description: f.description,
@@ -230,26 +252,59 @@ export async function getFlagInventory(
 }
 
 /**
- * Turns a flag on or off and reads it back to confirm. If PATCH throws after Flagsmith applied
- * the change (e.g. timeout/reset), one follow-up GET reconciles the real state so shedFlags
- * never loses track of a changed flag; if both fail, unknownState is marked for human follow-up.
+ * Turns a flag on or off and reads it back to confirm. Supports both Feature Versioning v2
+ * (__future__ endpoint) and v1 (featurestates endpoint, default on fresh self-hosted Flagsmith).
+ * If PATCH throws after Flagsmith applied the change (e.g. timeout/reset), one follow-up GET
+ * reconciles the real state so shedFlags never loses track of a changed flag; if both fail,
+ * unknownState is marked for human follow-up.
  */
 export async function setAndVerifyFlag(
-  admin: Pick<FlagsmithAdmin, 'setFlagEnabled' | 'getFlagState'>,
+  admin: Pick<FlagsmithAdmin, 'setFlagEnabled' | 'getFlagState'> &
+    Partial<Pick<FlagsmithAdmin, 'setV1FeatureStateEnabled' | 'getV1FeatureState'>>,
   environmentKey: string,
   flag: string,
   featureId: number,
   enabled: boolean,
+  options: { useV2?: boolean; featureStateId?: number } = {},
 ): Promise<FlagChangeResult> {
+  const useV1 = options.useV2 === false;
+  if (useV1 && options.featureStateId === undefined) {
+    return {
+      flag,
+      featureId,
+      ok: false,
+      dryRun: false,
+      error: 'missing environment_feature_state id for v1 environment',
+    };
+  }
+
+  const writeState = async (): Promise<boolean> => {
+    if (useV1) {
+      if (!admin.setV1FeatureStateEnabled) throw new Error('v1 write method unavailable');
+      const res = await admin.setV1FeatureStateEnabled(environmentKey, options.featureStateId!, enabled);
+      return res.enabled;
+    }
+    const res = await admin.setFlagEnabled(environmentKey, featureId, enabled);
+    return res.environment_default.enabled;
+  };
+
+  const readState = async (): Promise<boolean> => {
+    if (useV1) {
+      if (!admin.getV1FeatureState) throw new Error('v1 read method unavailable');
+      const res = await admin.getV1FeatureState(environmentKey, options.featureStateId!);
+      return res.enabled;
+    }
+    const res = await admin.getFlagState(environmentKey, featureId);
+    return res.environment_default.enabled;
+  };
+
   let patchedEnabled: boolean;
   try {
-    const patched = await admin.setFlagEnabled(environmentKey, featureId, enabled);
-    patchedEnabled = patched.environment_default.enabled;
+    patchedEnabled = await writeState();
   } catch (patchErr) {
     const patchMsg = patchErr instanceof Error ? patchErr.message : String(patchErr);
     try {
-      const actual = await admin.getFlagState(environmentKey, featureId);
-      const actualEnabled = actual.environment_default.enabled;
+      const actualEnabled = await readState();
       if (actualEnabled === enabled) {
         return {
           flag,
@@ -276,14 +331,14 @@ export async function setAndVerifyFlag(
   }
 
   try {
-    const after = await admin.getFlagState(environmentKey, featureId);
-    const ok = after.environment_default.enabled === enabled;
+    const actualEnabled = await readState();
+    const ok = actualEnabled === enabled;
     return {
       flag,
       featureId,
       ok,
       dryRun: false,
-      enabledAfter: after.environment_default.enabled,
+      enabledAfter: actualEnabled,
       error: ok ? undefined : `still ${enabled ? 'off' : 'on'} when read back`,
     };
   } catch (verifyErr) {

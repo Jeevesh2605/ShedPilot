@@ -70,8 +70,11 @@ async function shed(incident: ProposalIncident): Promise<void> {
   const shedFlags: string[] = [];
   let blocked: string[] = [];
   try {
-    const admin = new FlagsmithAdmin({ apiKey: await getSecret('FLAGSMITH_ADMIN_KEY_PARAM') });
-    const { flags } = await getFlagInventory(admin, envNumber('FLAGSMITH_PROJECT_ID'), environmentKey);
+    const admin = new FlagsmithAdmin({
+      apiKey: await getSecret('FLAGSMITH_ADMIN_KEY_PARAM'),
+      host: process.env.FLAGSMITH_API_HOST,
+    });
+    const { environment, flags } = await getFlagInventory(admin, envNumber('FLAGSMITH_PROJECT_ID'), environmentKey);
 
     // Re-check against live state: someone may have changed a flag or its tags since the proposal.
     const guard = checkShedActions(incident.proposal.actions, flags);
@@ -83,7 +86,10 @@ async function shed(incident: ProposalIncident): Promise<void> {
 
     for (const action of guard.allowed) {
       const flag = flags.find((f) => f.name === action.flag)!;
-      const r = await setFlag(admin, environmentKey, flag.name, flag.id, false);
+      const r = await setFlag(admin, environmentKey, flag.name, flag.id, false, {
+        useV2: environment.use_v2_feature_versioning,
+        featureStateId: flag.featureStateId,
+      });
       results.push(r);
       if (r.ok) shedFlags.push(r.flag);
       const eventMsg = !r.ok
@@ -119,16 +125,23 @@ async function shed(incident: ProposalIncident): Promise<void> {
 }
 
 /** Turns one flag on or off and reads it back to confirm. */
-async function setFlag(admin: FlagsmithAdmin, environmentKey: string, flag: string, featureId: number, enabled: boolean): Promise<FlagChangeResult> {
+async function setFlag(
+  admin: FlagsmithAdmin,
+  environmentKey: string,
+  flag: string,
+  featureId: number,
+  enabled: boolean,
+  options: { useV2?: boolean; featureStateId?: number } = {},
+): Promise<FlagChangeResult> {
   if (DRY_RUN) {
-    log('DRY RUN: would send', {
-      request: `PATCH /api/__future__/environments/${environmentKey}/features/${featureId}/`,
-      body: { environment_default: { enabled } },
-      flag,
-    });
+    const request = options.useV2 === false
+      ? `PATCH /api/v1/environments/${environmentKey}/featurestates/${options.featureStateId}/`
+      : `PATCH /api/__future__/environments/${environmentKey}/features/${featureId}/`;
+    const body = options.useV2 === false ? { enabled } : { environment_default: { enabled } };
+    log('DRY RUN: would send', { request, body, flag });
     return { flag, featureId, ok: true, dryRun: true };
   }
-  const result = await setAndVerifyFlag(admin, environmentKey, flag, featureId, enabled);
+  const result = await setAndVerifyFlag(admin, environmentKey, flag, featureId, enabled, options);
   log(
     result.unknownState
       ? 'Flag write and read-back both failed (state unknown)'
@@ -162,8 +175,11 @@ async function restore(incident: ProposalIncident): Promise<void> {
   const results: FlagChangeResult[] = [];
   let blocked: string[] = [];
   try {
-    const admin = new FlagsmithAdmin({ apiKey: await getSecret('FLAGSMITH_ADMIN_KEY_PARAM') });
-    const { flags } = await getFlagInventory(admin, envNumber('FLAGSMITH_PROJECT_ID'), environmentKey);
+    const admin = new FlagsmithAdmin({
+      apiKey: await getSecret('FLAGSMITH_ADMIN_KEY_PARAM'),
+      host: process.env.FLAGSMITH_API_HOST,
+    });
+    const { environment, flags } = await getFlagInventory(admin, envNumber('FLAGSMITH_PROJECT_ID'), environmentKey);
 
     // Only flags this incident turned off, still off, still tagged load-sheddable.
     const guard = checkRestoreFlags(shedFlags, shedFlags, flags);
@@ -172,7 +188,10 @@ async function restore(incident: ProposalIncident): Promise<void> {
 
     for (const name of guard.allowed) {
       const flag = flags.find((f) => f.name === name)!;
-      const r = await setFlag(admin, environmentKey, flag.name, flag.id, true);
+      const r = await setFlag(admin, environmentKey, flag.name, flag.id, true, {
+        useV2: environment.use_v2_feature_versioning,
+        featureStateId: flag.featureStateId,
+      });
       results.push(r);
       const eventMsg = !r.ok
         ? `Failed to turn on ${r.flag}: ${r.error}`

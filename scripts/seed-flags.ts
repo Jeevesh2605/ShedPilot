@@ -109,19 +109,32 @@ async function main() {
 
   // 5. Read-only check of the endpoint the executor will use to flip flags (open question in ARCHITECTURE 2.3).
   const pdf = features.find((f) => f.name === 'pdf_export');
-  if (pdf) await checkUpdateEndpoint(admin, environment.api_key, environment.id, pdf);
+  if (pdf) await checkUpdateEndpoint(admin, environment.api_key, environment.use_v2_feature_versioning, pdf);
 }
 
-async function checkUpdateEndpoint(admin: FlagsmithAdmin, apiKey: string, numericId: number, feature: FlagsmithFeature) {
+async function checkUpdateEndpoint(admin: FlagsmithAdmin, apiKey: string, useV2: boolean, feature: FlagsmithFeature) {
   console.log('\nChecking the flag update endpoint (read-only GET):');
-  for (const [label, key] of [['environment api_key', apiKey], ['numeric environment id', String(numericId)]] as const) {
+  if (!useV2) {
+    const stateId = feature.environment_feature_state?.id;
+    if (!stateId) {
+      console.log('  v1 featurestates: skipped (no environment_feature_state id)');
+      return;
+    }
     try {
-      const state = await admin.getFlagState(key, feature.id);
-      console.log(`  with ${label}: OK, pdf_export enabled = ${state.environment_default.enabled}`);
+      const state = await admin.getV1FeatureState(apiKey, stateId);
+      console.log(`  v1 featurestates (state ${stateId}): OK, pdf_export enabled = ${state.enabled}`);
     } catch (err) {
       const status = err instanceof FlagsmithApiError ? `HTTP ${err.status}` : String(err);
-      console.log(`  with ${label}: failed (${status})`);
+      console.log(`  v1 featurestates (state ${stateId}): failed (${status})`);
     }
+    return;
+  }
+  try {
+    const state = await admin.getFlagState(apiKey, feature.id);
+    console.log(`  v2 __future__ (environment api_key): OK, pdf_export enabled = ${state.environment_default.enabled}`);
+  } catch (err) {
+    const status = err instanceof FlagsmithApiError ? `HTTP ${err.status}` : String(err);
+    console.log(`  v2 __future__ (environment api_key): failed (${status})`);
   }
 }
 

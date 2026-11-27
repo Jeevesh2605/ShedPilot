@@ -152,4 +152,73 @@ describe('setAndVerifyFlag reconciliation', () => {
     expect(result).toMatchObject({ flag: 'pdf_export', ok: false, unknownState: true });
     expect(result.error).toContain('verify in Flagsmith');
   });
+
+  it('uses v1 featurestates endpoints when useV2 is false and reconciles failed PATCH', async () => {
+    const v1State = (enabled: boolean) => ({ id: 77, enabled, feature: 1, environment: 2 });
+    let patched = false;
+    const okResult = await setAndVerifyFlag(
+      {
+        setFlagEnabled: async () => { throw new Error('should not call v2'); },
+        getFlagState: async () => { throw new Error('should not call v2'); },
+        setV1FeatureStateEnabled: async (_env, stateId, enabled) => {
+          expect(stateId).toBe(77);
+          patched = true;
+          return v1State(enabled);
+        },
+        getV1FeatureState: async (_env, stateId) => {
+          expect(stateId).toBe(77);
+          return v1State(false);
+        },
+      },
+      'env-key',
+      'pdf_export',
+      1,
+      false,
+      { useV2: false, featureStateId: 77 },
+    );
+    expect(patched).toBe(true);
+    expect(okResult).toMatchObject({ flag: 'pdf_export', ok: true, enabledAfter: false });
+
+    const reconciled = await setAndVerifyFlag(
+      {
+        setFlagEnabled: async () => { throw new Error('should not call v2'); },
+        getFlagState: async () => { throw new Error('should not call v2'); },
+        setV1FeatureStateEnabled: async () => { throw new Error('timeout'); },
+        getV1FeatureState: async () => v1State(false),
+      },
+      'env-key',
+      'pdf_export',
+      1,
+      false,
+      { useV2: false, featureStateId: 77 },
+    );
+    expect(reconciled).toMatchObject({ flag: 'pdf_export', ok: true, unverified: true, enabledAfter: false });
+
+    const missingId = await setAndVerifyFlag(
+      {
+        setFlagEnabled: async () => { throw new Error('should not call v2'); },
+        getFlagState: async () => { throw new Error('should not call v2'); },
+      },
+      'env-key',
+      'pdf_export',
+      1,
+      false,
+      { useV2: false },
+    );
+    expect(missingId).toMatchObject({ flag: 'pdf_export', ok: false });
+    expect(missingId.error).toContain('feature_state');
+  });
+
+  it('defaults blank host to Flagsmith Cloud and trims trailing slashes on custom host', async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ count: 0, next: null, results: [] }), { status: 200 })),
+    );
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await new FlagsmithAdmin({ apiKey: 'k', host: '   ' }).listProjects();
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.flagsmith.com/api/v1/projects/');
+
+    await new FlagsmithAdmin({ apiKey: 'k', host: 'https://flags.example.com///' }).listProjects();
+    expect(fetchMock.mock.calls[1][0]).toBe('https://flags.example.com/api/v1/projects/');
+  });
 });

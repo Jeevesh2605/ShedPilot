@@ -32,6 +32,10 @@ Parameters:
   FlagsmithEnvironmentKey:
     Type: String
     Description: The environment's client-side key. It is public by design, so it is not a secret.
+  FlagsmithApiHost:
+    Type: String
+    Default: ''
+    Description: Optional base URL for self-hosted Flagsmith (e.g. https://flags.example.com). Empty uses Flagsmith Cloud.
   EvidenceWindowMinutes:
     Type: Number
     Default: 5
@@ -110,6 +114,7 @@ Globals:
         FLAGSMITH_ADMIN_KEY_PARAM: /shedpilot/flagsmith-admin-key
         FLAGSMITH_PROJECT_ID: !Ref FlagsmithProjectId
         FLAGSMITH_ENVIRONMENT_KEY: !Ref FlagsmithEnvironmentKey
+        FLAGSMITH_API_HOST: !Ref FlagsmithApiHost
         HEALTHY_MINUTES: !Ref HealthyMinutes
         RESTORE_COOLDOWN_MINUTES: !Ref RestoreCooldownMinutes
         APPROVAL_TIMEOUT_MINUTES: !Ref ApprovalTimeoutMinutes

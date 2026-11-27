@@ -42,11 +42,20 @@ export interface FlagSnapshot {
 let client: Flagsmith | undefined;
 let cache: { snapshot: FlagSnapshot; fetchedAt: number } | undefined;
 
+/** Builds the Flagsmith Flags API base URL when pointing at a self-hosted instance. */
+export function resolveApiUrl(rawHost = process.env.FLAGSMITH_API_HOST): string | undefined {
+  const trimmed = rawHost?.trim();
+  if (!trimmed) return undefined;
+  return `${trimmed.replace(/\/+$/, '').replace(/\/api\/v1$/, '')}/api/v1/`;
+}
+
 async function getClient(): Promise<Flagsmith> {
   if (!client) {
     const environmentKey = await getSecret('FLAGSMITH_SERVER_KEY', 'FLAGSMITH_SERVER_KEY_PARAM');
+    const apiUrl = resolveApiUrl();
     client = new Flagsmith({
       environmentKey,
+      ...(apiUrl ? { apiUrl } : {}),
       // Keep a Flagsmith outage from making our requests slow: fail fast, then use the defaults.
       requestTimeoutSeconds: 2,
       retries: 1,

@@ -141,7 +141,10 @@ async function gatherEvidence(alarm: AlarmInfo): Promise<Evidence> {
   const start = new Date(end.getTime() - windowMinutes * 60_000);
 
   // Flags first: their names decide which feature timings the log query measures.
-  const admin = new FlagsmithAdmin({ apiKey: await getSecret('FLAGSMITH_ADMIN_KEY_PARAM') });
+  const admin = new FlagsmithAdmin({
+    apiKey: await getSecret('FLAGSMITH_ADMIN_KEY_PARAM'),
+    host: process.env.FLAGSMITH_API_HOST,
+  });
   const { flags } = await getFlagInventory(admin, envNumber('FLAGSMITH_PROJECT_ID'), env('FLAGSMITH_ENVIRONMENT_KEY'));
 
   const [metrics, logs] = await Promise.all([

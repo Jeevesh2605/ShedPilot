@@ -34,6 +34,10 @@ Parameters:
     Type: String
     Default: /shedpilot/flagsmith-server-key
     Description: SSM SecureString parameter holding the Flagsmith server-side environment key (ser.xxx).
+  FlagsmithApiHost:
+    Type: String
+    Default: ''
+    Description: Optional base URL for self-hosted Flagsmith (e.g. https://flags.example.com). Empty uses Flagsmith Cloud.
 
 Conditions:
   UseReservedConcurrency: !Not [!Equals [!Ref ReservedConcurrency, 0]]
@@ -68,6 +72,7 @@ Resources:
       Environment:
         Variables:
           FLAGSMITH_SERVER_KEY_PARAM: !Ref FlagsmithServerKeyParam
+          FLAGSMITH_API_HOST: !Ref FlagsmithApiHost
           PDF_PAGES: !Ref PdfPages
           ANALYTICS_ROWS: !Ref AnalyticsRows
           NODE_OPTIONS: --enable-source-maps

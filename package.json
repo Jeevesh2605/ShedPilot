@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "sam build",
-    "deploy:app": "sam build && sam deploy",
+    "deploy:app": "./scripts/deploy-app.sh",
     "deploy:agent": "./scripts/deploy-agent.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

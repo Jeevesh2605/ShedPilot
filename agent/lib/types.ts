@@ -7,6 +7,8 @@
 export interface FlagInfo {
   name: string;
   id: number;
+  /** Numeric environment feature-state ID, used to toggle flags on v1-versioned environments. */
+  featureStateId?: number;
   enabled: boolean;
   tags: string[]; // labels, e.g. ["load-sheddable"]
   description: string | null;

@@ -42,6 +42,7 @@ HEADROOM_FRACTION="$(setting HEADROOM_FRACTION 0.6)"
 RESTORE_COOLDOWN_MINUTES="$(setting RESTORE_COOLDOWN_MINUTES 10)"
 APPROVAL_TIMEOUT_MINUTES="$(setting APPROVAL_TIMEOUT_MINUTES 30)"
 TARGET_REGION_IS_OPT_IN="$(setting TARGET_REGION_IS_OPT_IN false)"
+FLAGSMITH_API_HOST="$(setting FLAGSMITH_API_HOST '')"
 
 for name in SLACK_CHANNEL_ID FLAGSMITH_PROJECT_ID FLAGSMITH_ENVIRONMENT_KEY; do
   [ -n "$(read_env "$name")" ] || { echo "$name is empty in .env"; exit 1; }
@@ -49,6 +50,7 @@ done
 
 echo "App region:   $SHEDPILOT_REGION"
 echo "Agent region: $SHEDPILOT_AGENT_REGION"
+echo "Flagsmith:    ${FLAGSMITH_API_HOST:-https://api.flagsmith.com (Cloud)}"
 echo "LLM:          $LLM_PROVIDER ($LLM_MODEL)   dry run: $DRY_RUN   approvers: ${APPROVER_USER_IDS:-anyone in the channel}"
 echo "Recovery:     every $RECOVERY_EVERY_MINUTES min, $HEALTHY_MINUTES healthy min, limit $CONCURRENCY_LIMIT, cooldown $RESTORE_COOLDOWN_MINUTES min"
 
@@ -60,6 +62,11 @@ OVERRIDES+=" ReportsLogGroup=$(output ReportsLogGroup)"
 OVERRIDES+=" SlackChannelId=$(read_env SLACK_CHANNEL_ID)"
 OVERRIDES+=" FlagsmithProjectId=$(read_env FLAGSMITH_PROJECT_ID)"
 OVERRIDES+=" FlagsmithEnvironmentKey=$(read_env FLAGSMITH_ENVIRONMENT_KEY)"
+if [ -n "$FLAGSMITH_API_HOST" ]; then
+  OVERRIDES+=" FlagsmithApiHost=$FLAGSMITH_API_HOST"
+else
+  OVERRIDES+=" FlagsmithApiHost=\"\""
+fi
 OVERRIDES+=" LlmProvider=$LLM_PROVIDER LlmModel=$LLM_MODEL DryRun=$DRY_RUN"
 if [ -n "$APPROVER_USER_IDS" ]; then
   OVERRIDES+=" ApproverUserIds=$APPROVER_USER_IDS"

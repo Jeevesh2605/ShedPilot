@@ -2,7 +2,7 @@
 
 **An AI SRE agent that finds which feature is starving your API, proposes the smallest Flagsmith flag change that fixes it, waits for a human to approve in Slack, and verifies recovery from live metrics before proposing to turn the feature back on.**
 
-Toggle Wars: The Flagsmith Experimentation Hackathon (WeMakeDevs x Flagsmith), Track 02: AI Agents and Feature Flags.
+Toggle Wars: The Flagsmith Experimentation Hackathon (WeMakeDevs x Flagsmith), Track 02: AI Agents and Feature Flags & Track 03: Build on Open Source Flagsmith.
 
 - **Demo video:** TODO: add link
 - **Repo:** https://github.com/Jeevesh2605/ShedPilot
@@ -85,6 +85,7 @@ Flagsmith is the **only source of truth for feature state**. The app reads flags
 
 - **The write endpoint is experimental.** Environments on Feature Versioning v2 reject legacy `featurestates` writes, so `executor` uses `PATCH /api/__future__/environments/{env_key}/features/{feature_id}/`. This requires **Change Requests** to be disabled in the target environment.
 - **Two keys, two blast radii.** The app only ever holds a server-side environment key. The org-level Admin key lives in SSM and is used only by the agent stack.
+- **Cloud or self-hosted with one variable.** Setting `FLAGSMITH_API_HOST` points both the backend SDK (`apiUrl`) and the agent's Admin API client at a self-hosted Flagsmith instance, and `executor` supports both v1 (`featurestates`) and v2 (`__future__`) environments automatically. See [docs/SELF_HOSTED.md](docs/SELF_HOSTED.md) and [self-hosted/docker-compose.yml](self-hosted/docker-compose.yml).
 - **5 s flag cache in the app.** A flag flip takes effect within seconds, which matches the failures stopping 6 to 26 s after approval in the runs below.
 - **Fail-safe defaults.** If Flagsmith is unreachable, the heavy features default to off and the core route defaults to on.
 
@@ -198,7 +199,7 @@ Timeline (UTC)
 
 ## Run it locally
 
-Requirements: Node.js 22+, AWS SAM CLI, an AWS account, a Flagsmith Cloud project, a Slack app, and a Groq or xAI API key. Full steps are in [docs/SETUP.md](docs/SETUP.md).
+Requirements: Node.js 22+, AWS SAM CLI, an AWS account, a Flagsmith Cloud or [self-hosted Flagsmith](docs/SELF_HOSTED.md) project, a Slack app, and a Groq or xAI API key. Full steps are in [docs/SETUP.md](docs/SETUP.md) and [docs/SELF_HOSTED.md](docs/SELF_HOSTED.md).
 
 ```bash
 npm install
@@ -219,7 +220,7 @@ Useful commands:
 
 ```bash
 npm run typecheck
-npm test                        # 12 test files, 92 tests
+npm test                        # 12 test files, 94 tests
 npm run llm:try                 # one LLM proposal on sample evidence, no AWS needed
 
 RECOVERY_EVERY_MINUTES=1 HEALTHY_MINUTES=2 ./scripts/deploy-agent.sh   # fast recovery loop for demos
@@ -256,10 +257,11 @@ agent/                   investigator, slack-callback, executor, recovery
 agent/lib/guardrails.ts  checkShedActions and checkRestoreFlags
 agent/lib/slackVerify.ts Slack HMAC-SHA256 + replay-window verification
 agent/lib/proposalParser.ts  strict LLM JSON parsing
-tests/                   unit tests (12 files, 92 tests)
+tests/                   unit tests (12 files, 94 tests)
 loadtest/run.ts          open-loop load generator (baseline, spike, demo)
-scripts/                 seed-flags.ts, put-secrets.sh, deploy-agent.sh, teardown.sh
-docs/                    ARCHITECTURE.md, SETUP.md, DEMO_SCRIPT.md, slack-app-manifest.yaml, architecture-diagram.svg
+scripts/                 seed-flags.ts, put-secrets.sh, deploy-app.sh, deploy-agent.sh, teardown.sh
+self-hosted/             docker-compose.yml (open-source Flagsmith + Postgres + task processor)
+docs/                    ARCHITECTURE.md, SETUP.md, SELF_HOSTED.md, DEMO_SCRIPT.md, slack-app-manifest.yaml, architecture-diagram.svg
 ```
 
 ## Disclosures

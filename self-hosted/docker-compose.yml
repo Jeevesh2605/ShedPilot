@@ -1,0 +1,62 @@
+# Self-hosted Open Source Flagsmith stack for ShedPilot (Track 3).
+# Runs Postgres + Flagsmith migrations + Flagsmith API/UI (port 8000) + task processor.
+# Usage:
+#   docker compose -f self-hosted/docker-compose.yml up -d
+# See docs/SELF_HOSTED.md for exposing port 8000 via Cloudflare Tunnel and connecting ShedPilot.
+services:
+  postgres:
+    image: postgres:15.5-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: flagsmith
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${FLAGSMITH_PG_PASSWORD:-flagsmith_local_pass}
+    volumes:
+      - flagsmith_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d flagsmith -U postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+      start_period: 20s
+
+  migrate-db:
+    image: docker.flagsmith.com/flagsmith/flagsmith:latest
+    command: ["migrate"]
+    environment: &flagsmith-env
+      DATABASE_URL: postgresql://postgres:${FLAGSMITH_PG_PASSWORD:-flagsmith_local_pass}@postgres:5432/flagsmith
+      USE_POSTGRES_FOR_ANALYTICS: "true"
+      ENVIRONMENT: production
+      DJANGO_ALLOWED_HOSTS: "*"
+      ALLOWED_HOSTS: "*"
+      DJANGO_SECRET_KEY: ${FLAGSMITH_DJANGO_SECRET_KEY:-shedpilot-local-dev-secret-change-me}
+      TASK_RUN_METHOD: TASK_PROCESSOR
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  flagsmith:
+    image: docker.flagsmith.com/flagsmith/flagsmith:latest
+    restart: unless-stopped
+    command: ["serve"]
+    environment: *flagsmith-env
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate-db:
+        condition: service_completed_successfully
+
+  flagsmith-task-processor:
+    image: docker.flagsmith.com/flagsmith/flagsmith:latest
+    restart: unless-stopped
+    command: ["run-task-processor"]
+    environment: *flagsmith-env
+    depends_on:
+      migrate-db:
+        condition: service_completed_successfully
+
+volumes:
+  flagsmith_pgdata:
+

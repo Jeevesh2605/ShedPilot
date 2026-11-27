@@ -29,7 +29,7 @@ services:
       ENVIRONMENT: production
       DJANGO_ALLOWED_HOSTS: "*"
       ALLOWED_HOSTS: "*"
-      DJANGO_SECRET_KEY: ${FLAGSMITH_DJANGO_SECRET_KEY:-shedpilot-local-dev-secret-change-me}
+      DJANGO_SECRET_KEY: ${FLAGSMITH_DJANGO_SECRET_KEY:?Set FLAGSMITH_DJANGO_SECRET_KEY (e.g. openssl rand -hex 32)}
       TASK_RUN_METHOD: TASK_PROCESSOR
     healthcheck:
       disable: true

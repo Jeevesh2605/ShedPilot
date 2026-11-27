@@ -10,7 +10,10 @@ When `FLAGSMITH_API_HOST` is empty, `reports-api` and the agent Lambdas default 
 
 ### 1. Start Open-Source Flagsmith locally
 
+Generate a unique Django signing secret (or add `FLAGSMITH_DJANGO_SECRET_KEY=...` to `.env` and pass `--env-file .env`):
+
 ```bash
+export FLAGSMITH_DJANGO_SECRET_KEY="$(openssl rand -hex 32)"
 docker compose -f self-hosted/docker-compose.yml up -d
 ```
 

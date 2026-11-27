@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1052" width="1600" height="1052" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" xmlns:c2pa="http://c2pa.org/manifest">
+<defs><marker id="ah" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto"><path d="M0,0 L16,8 L0,16 z" fill="#334155"/></marker></defs>
+<rect width="1600" height="1052" rx="24" fill="#FFFFFF"/>
+<rect x="1" y="1" width="1598" height="1050" rx="24" fill="none" stroke="#E2E8F0" stroke-width="2"/>
+<text x="800.0" y="70" text-anchor="middle" font-size="48" font-weight="800" fill="#0F172A">ShedPilot</text>
+<text x="800.0" y="106" text-anchor="middle" font-size="22" fill="#475569">How one incident is handled, step by step</text>
+<rect x="371.8" y="126" width="182.0" height="40" rx="20" fill="#7C3AED"/>
+<text x="462.8" y="152" text-anchor="middle" font-size="19" font-weight="700" fill="#FFFFFF">LLM proposes</text>
+<rect x="569.8" y="126" width="228.0" height="40" rx="20" fill="#D97706"/>
+<text x="683.8" y="152" text-anchor="middle" font-size="19" font-weight="700" fill="#FFFFFF">Guardrail checks</text>
+<rect x="813.8" y="126" width="205.0" height="40" rx="20" fill="#16A34A"/>
+<text x="916.2" y="152" text-anchor="middle" font-size="19" font-weight="700" fill="#FFFFFF">Human approves</text>
+<rect x="1034.8" y="126" width="193.5" height="40" rx="20" fill="#2563EB"/>
+<text x="1131.5" y="152" text-anchor="middle" font-size="19" font-weight="700" fill="#FFFFFF">Code executes</text>
+<rect x="40" y="195" width="480" height="290" rx="18" fill="#FFF1F1" stroke="#DC2626" stroke-width="3"/>
+<path d="M40,213 a18,18 0 0 1 18,-18 h444 a18,18 0 0 1 18,18 v42 h-480 z" fill="#DC2626"/>
+<circle cx="78" cy="225" r="20" fill="#FFFFFF"/>
+<text x="78" y="233" text-anchor="middle" font-size="24" font-weight="800" fill="#DC2626">1</text>
+<text x="112" y="233" font-size="24" font-weight="700" fill="#FFFFFF">Traffic spike hits the API</text>
+<text x="64" y="289" font-size="18" fill="#1E293B">The demo API reads its feature flags from</text>
+<text x="64" y="316" font-size="18" fill="#1E293B">Flagsmith. One heavy feature, pdf_export,</text>
+<text x="64" y="343" font-size="18" fill="#1E293B">uses up all the Lambda concurrency, so</text>
+<text x="64" y="370" font-size="18" fill="#1E293B">even checkout gets throttled.</text>
+<rect x="64.0" y="433" width="133.6" height="32" rx="16" fill="#FFFFFF" stroke="#DC2626" stroke-width="2"/>
+<text x="130.8" y="454" text-anchor="middle" font-size="15" font-weight="600" fill="#DC2626">API Gateway</text>
+<rect x="207.6" y="433" width="133.6" height="32" rx="16" fill="#FFFFFF" stroke="#DC2626" stroke-width="2"/>
+<text x="274.4" y="454" text-anchor="middle" font-size="15" font-weight="600" fill="#DC2626">reports-api</text>
+<rect x="351.2" y="433" width="114.4" height="32" rx="16" fill="#FFFFFF" stroke="#DC2626" stroke-width="2"/>
+<text x="408.4" y="454" text-anchor="middle" font-size="15" font-weight="600" fill="#DC2626">Flagsmith</text>
+<rect x="560" y="195" width="480" height="290" rx="18" fill="#FFF8E6" stroke="#D97706" stroke-width="3"/>
+<path d="M560,213 a18,18 0 0 1 18,-18 h444 a18,18 0 0 1 18,18 v42 h-480 z" fill="#D97706"/>
+<circle cx="598" cy="225" r="20" fill="#FFFFFF"/>
+<text x="598" y="233" text-anchor="middle" font-size="24" font-weight="800" fill="#D97706">2</text>
+<text x="632" y="233" font-size="24" font-weight="700" fill="#FFFFFF">CloudWatch detects it</text>
+<text x="584" y="289" font-size="18" fill="#1E293B">Alarms fire when Lambda throttles go above</text>
+<text x="584" y="316" font-size="18" fill="#1E293B">0 or p90 latency crosses the threshold.</text>
+<text x="584" y="343" font-size="18" fill="#1E293B">SNS wakes the agent, which runs in a</text>
+<text x="584" y="370" font-size="18" fill="#1E293B">different AWS region so the spike cannot</text>
+<text x="584" y="397" font-size="18" fill="#1E293B">slow it down.</text>
+<rect x="584.0" y="433" width="191.2" height="32" rx="16" fill="#FFFFFF" stroke="#D97706" stroke-width="2"/>
+<text x="679.6" y="454" text-anchor="middle" font-size="15" font-weight="600" fill="#D97706">CloudWatch Alarms</text>
+<rect x="785.2" y="433" width="56.8" height="32" rx="16" fill="#FFFFFF" stroke="#D97706" stroke-width="2"/>
+<text x="813.6" y="454" text-anchor="middle" font-size="15" font-weight="600" fill="#D97706">SNS</text>
+<rect x="1080" y="195" width="480" height="290" rx="18" fill="#F5F0FF" stroke="#7C3AED" stroke-width="3"/>
+<path d="M1080,213 a18,18 0 0 1 18,-18 h444 a18,18 0 0 1 18,18 v42 h-480 z" fill="#7C3AED"/>
+<circle cx="1118" cy="225" r="20" fill="#FFFFFF"/>
+<text x="1118" y="233" text-anchor="middle" font-size="24" font-weight="800" fill="#7C3AED">3</text>
+<text x="1152" y="233" font-size="24" font-weight="700" fill="#FFFFFF">The agent investigates</text>
+<text x="1104" y="289" font-size="18" fill="#1E293B">Takes a lock so one outage is one</text>
+<text x="1104" y="316" font-size="18" fill="#1E293B">incident. Measures which feature used the</text>
+<text x="1104" y="343" font-size="18" fill="#1E293B">compute, from metrics and logs. The LLM</text>
+<text x="1104" y="370" font-size="18" fill="#1E293B">proposes the smallest fix, a guardrail</text>
+<text x="1104" y="397" font-size="18" fill="#1E293B">checks it, and the proposal goes to Slack.</text>
+<rect x="1104.0" y="433" width="210.4" height="32" rx="16" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2"/>
+<text x="1209.2" y="454" text-anchor="middle" font-size="15" font-weight="600" fill="#7C3AED">investigator Lambda</text>
+<rect x="1324.4" y="433" width="56.8" height="32" rx="16" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2"/>
+<text x="1352.8" y="454" text-anchor="middle" font-size="15" font-weight="600" fill="#7C3AED">LLM</text>
+<rect x="1391.2" y="433" width="114.4" height="32" rx="16" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2"/>
+<text x="1448.4" y="454" text-anchor="middle" font-size="15" font-weight="600" fill="#7C3AED">Guardrail</text>
+<rect x="40" y="535" width="480" height="290" rx="18" fill="#ECFDF3" stroke="#16A34A" stroke-width="3"/>
+<path d="M40,553 a18,18 0 0 1 18,-18 h444 a18,18 0 0 1 18,18 v42 h-480 z" fill="#16A34A"/>
+<circle cx="78" cy="565" r="20" fill="#FFFFFF"/>
+<text x="78" y="573" text-anchor="middle" font-size="24" font-weight="800" fill="#16A34A">4</text>
+<text x="112" y="573" font-size="24" font-weight="700" fill="#FFFFFF">A human approves in Slack</text>
+<text x="64" y="629" font-size="18" fill="#1E293B">The message shows the evidence, the flag</text>
+<text x="64" y="656" font-size="18" fill="#1E293B">to turn off and the user impact. Click</text>
+<text x="64" y="683" font-size="18" fill="#1E293B">Approve or Reject. The callback verifies</text>
+<text x="64" y="710" font-size="18" fill="#1E293B">the Slack signature and records the</text>
+<text x="64" y="737" font-size="18" fill="#1E293B">decision.</text>
+<rect x="64.0" y="773" width="76.0" height="32" rx="16" fill="#FFFFFF" stroke="#16A34A" stroke-width="2"/>
+<text x="102.0" y="794" text-anchor="middle" font-size="15" font-weight="600" fill="#16A34A">Slack</text>
+<rect x="150.0" y="773" width="229.6" height="32" rx="16" fill="#FFFFFF" stroke="#16A34A" stroke-width="2"/>
+<text x="264.8" y="794" text-anchor="middle" font-size="15" font-weight="600" fill="#16A34A">slack-callback Lambda</text>
+<rect x="560" y="535" width="480" height="290" rx="18" fill="#EFF5FF" stroke="#2563EB" stroke-width="3"/>
+<path d="M560,553 a18,18 0 0 1 18,-18 h444 a18,18 0 0 1 18,18 v42 h-480 z" fill="#2563EB"/>
+<circle cx="598" cy="565" r="20" fill="#FFFFFF"/>
+<text x="598" y="573" text-anchor="middle" font-size="24" font-weight="800" fill="#2563EB">5</text>
+<text x="632" y="573" font-size="24" font-weight="700" fill="#FFFFFF">Executor flips the flag</text>
+<text x="584" y="629" font-size="18" fill="#1E293B">Re-reads live flag state, re-runs the</text>
+<text x="584" y="656" font-size="18" fill="#1E293B">guardrail, turns the approved flag</text>
+<text x="584" y="683" font-size="18" fill="#1E293B">(pdf_export) off in Flagsmith and reads it</text>
+<text x="584" y="710" font-size="18" fill="#1E293B">back to confirm. Users get a fast degraded</text>
+<text x="584" y="737" font-size="18" fill="#1E293B">response instead of errors.</text>
+<rect x="584.0" y="773" width="172.0" height="32" rx="16" fill="#FFFFFF" stroke="#2563EB" stroke-width="2"/>
+<text x="670.0" y="794" text-anchor="middle" font-size="15" font-weight="600" fill="#2563EB">executor Lambda</text>
+<rect x="766.0" y="773" width="210.4" height="32" rx="16" fill="#FFFFFF" stroke="#2563EB" stroke-width="2"/>
+<text x="871.2" y="794" text-anchor="middle" font-size="15" font-weight="600" fill="#2563EB">Flagsmith Admin API</text>
+<rect x="1080" y="535" width="480" height="290" rx="18" fill="#E8F8F6" stroke="#0D9488" stroke-width="3"/>
+<path d="M1080,553 a18,18 0 0 1 18,-18 h444 a18,18 0 0 1 18,18 v42 h-480 z" fill="#0D9488"/>
+<circle cx="1118" cy="565" r="20" fill="#FFFFFF"/>
+<text x="1118" y="573" text-anchor="middle" font-size="24" font-weight="800" fill="#0D9488">6</text>
+<text x="1152" y="573" font-size="24" font-weight="700" fill="#FFFFFF">Recovery and report</text>
+<text x="1104" y="629" font-size="18" fill="#1E293B">On a schedule, checks the service is</text>
+<text x="1104" y="656" font-size="18" fill="#1E293B">healthy with spare headroom. Then proposes</text>
+<text x="1104" y="683" font-size="18" fill="#1E293B">turning the flag back on, with the same</text>
+<text x="1104" y="710" font-size="18" fill="#1E293B">approval, and posts an incident report.</text>
+<rect x="1104.0" y="773" width="133.6" height="32" rx="16" fill="#FFFFFF" stroke="#0D9488" stroke-width="2"/>
+<text x="1170.8" y="794" text-anchor="middle" font-size="15" font-weight="600" fill="#0D9488">EventBridge</text>
+<rect x="1247.6" y="773" width="172.0" height="32" rx="16" fill="#FFFFFF" stroke="#0D9488" stroke-width="2"/>
+<text x="1333.6" y="794" text-anchor="middle" font-size="15" font-weight="600" fill="#0D9488">recovery Lambda</text>
+<line x1="524" y1="340.0" x2="556" y2="340.0" stroke="#334155" stroke-width="4" marker-end="url(#ah)"/>
+<line x1="1044" y1="340.0" x2="1076" y2="340.0" stroke="#334155" stroke-width="4" marker-end="url(#ah)"/>
+<line x1="524" y1="680.0" x2="556" y2="680.0" stroke="#334155" stroke-width="4" marker-end="url(#ah)"/>
+<line x1="1044" y1="680.0" x2="1076" y2="680.0" stroke="#334155" stroke-width="4" marker-end="url(#ah)"/>
+<path d="M1320.0,488 V510 H280.0 V530" fill="none" stroke="#334155" stroke-width="4" stroke-linejoin="round" marker-end="url(#ah)"/>
+<text x="40" y="868" font-size="17" font-weight="700" fill="#64748B" letter-spacing="2">SHARED BUILDING BLOCKS</text>
+<rect x="40" y="882" width="480" height="140" rx="16" fill="#FFF3EB" stroke="#EA580C" stroke-width="3"/>
+<text x="64" y="918" font-size="21" font-weight="700" fill="#EA580C">Flagsmith: source of truth for features</text>
+<text x="64" y="948" font-size="17" fill="#1E293B">Holds the 4 demo flags. Only flags tagged</text>
+<text x="64" y="974" font-size="17" fill="#1E293B">load-sheddable can ever be proposed or</text>
+<text x="64" y="1000" font-size="17" fill="#1E293B">changed.</text>
+<rect x="560" y="882" width="480" height="140" rx="16" fill="#EEF0FF" stroke="#4F46E5" stroke-width="3"/>
+<text x="584" y="918" font-size="21" font-weight="700" fill="#4F46E5">DynamoDB: incident memory</text>
+<text x="584" y="948" font-size="17" fill="#1E293B">Incident status, a lock so alarms create one</text>
+<text x="584" y="974" font-size="17" fill="#1E293B">incident, and an audit trail of every</text>
+<text x="584" y="1000" font-size="17" fill="#1E293B">approval.</text>
+<rect x="1080" y="882" width="480" height="140" rx="16" fill="#FDF0F6" stroke="#DB2777" stroke-width="3"/>
+<text x="1104" y="918" font-size="21" font-weight="700" fill="#DB2777">LLM: Groq gpt-oss-120b</text>
+<text x="1104" y="948" font-size="17" fill="#1E293B">Returns strict JSON only. It has no</text>
+<text x="1104" y="974" font-size="17" fill="#1E293B">credentials and cannot call any tool or change</text>
+<text x="1104" y="1000" font-size="17" fill="#1E293B">any flag.</text>
+<metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTo3OTc2OTUzMi0xYTE1LTRkMGYtODA1YS0xYjlhMjEyMWIyMTcAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaAgVl1B/KfF6aLD1DDRSlmMAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDpkMzRkNzk3ZS02NjQzLTQwMGUtOGE3Zi1iNTc5MTc0ZTZiZDZscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNo+Ipt+czLCtGtqoQtXSS7ygAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggekBho6q9T1rSx+VQzKBtJj6VPjiIHK2XynckNY5SuIOkZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaARffHxyOmjG06tRs8vOqAoAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIFsatdHPMqyGhvyYpIo7MwkjoyFvFbRQoPBPkWhPhjxIZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GS+JZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjc5NzY5NTMyLTFhMTUtNGQwZi04MDVhLTFiOWEyMTIxYjIxNy9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjYxMDc0ZTIwLWJmNzctNDYxZC05YWE3LTBiYjJiODhiNjQxM3JjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCB6QGGjqr1PWtLH5VDMoG0mPpU+OIgcrZfKdyQ1jlK4g6JjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFgg7cjt6MM1Ct+8J2hrNza3b1A/UOxtc38WmDrqT9oZLDaiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggdPmVYJXDUqWobJiyJjm6v9m5UCeWqyLTxiXrrMASnVp0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQHZliAcFKlkSaLL4l7LPQSdrf9mArGPVmyHA7m/lfJPrLgWeXSpfSL3vnq2cTZnTndn9hn7qroHfbV/TO42i1Dk=</c2pa:manifest></metadata></svg>

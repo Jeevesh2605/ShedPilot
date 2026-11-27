@@ -23,42 +23,9 @@ A static kill switch needs a human to notice the alert, open CloudWatch, guess w
 
 ## Architecture
 
-![ShedPilot System Architecture](docs/architecture-diagram.jpg)
+![ShedPilot System Architecture](docs/architecture-diagram.svg)
 
-```mermaid
-flowchart LR
-    LT["Load test (open-loop)"] -->|HTTPS| APIGW["API Gateway HTTP API"]
-    APIGW --> RA["reports-api Lambda"]
-    RA -->|"@flagsmith/nodejs (5 s cache)"| FSF[("Flagsmith Flags API")]
-    RA -->|"1 JSON log line / req"| CWL[("CloudWatch Logs")]
-    RA -.->|"Throttles, Duration"| CWM[("CloudWatch Metrics")]
-    APIGW -.->|"Latency p90, 5xx"| CWM
-
-    CWM --> AL1["Alarm: Throttles > 0"]
-    CWM --> AL2["Alarm: API p90 latency"]
-    AL1 --> SNS["SNS Topic"]
-    AL2 --> SNS
-    SNS --> INV["investigator Lambda"]
-
-    INV -->|GetMetricData| CWM
-    INV -->|"Logs Insights"| CWL
-    INV -->|"list features, states, tags"| FSA[("Flagsmith Admin API")]
-    INV -->|"evidence -> strict JSON"| LLM["LLM (Groq / xAI)"]
-    INV -->|"guardrail + save"| DDB[("DynamoDB incidents")]
-    INV -->|"Block Kit + buttons"| SLACK["Slack channel"]
-
-    SLACK -->|"button click"| CB["slack-callback Lambda (Function URL)"]
-    CB -->|"verify sig + conditional write"| DDB
-    CB -->|"async invoke"| EX["executor Lambda"]
-    EX -->|"re-check + PATCH + read back"| FSA
-    EX --> DDB
-    EX -->|chat.update| SLACK
-
-    EB["EventBridge Schedule"] --> REC["recovery Lambda"]
-    REC -->|"health + demand check"| CWM
-    REC --> DDB
-    REC -->|"restore proposal + report"| SLACK
-```
+Editable diagram source (Mermaid): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 The app stack (demo API) deploys to `ap-south-1`. The agent stack deploys to `ap-southeast-1` by default, so a traffic spike on the app cannot throttle the agent that is trying to fix it.
 

@@ -1,9 +1,10 @@
 /**
  * Open-loop load test for reports-api.
  *
- *   npm run load:baseline   about 2 req/s of mixed traffic for 60 s   (about 120 requests)
- *   npm run load:spike      about 8 req/s, mostly PDF, for 180 s      (about 1,440 requests)
- *   npm run load:demo       the spike, but for 300 s                  (about 2,400 requests)
+ *   npm run load:baseline       about 2 req/s of mixed traffic for 60 s   (about 120 requests)
+ *   npm run load:spike          about 8 req/s, mostly PDF, for 180 s      (about 1,440 requests)
+ *   npm run load:summary-spike  about 15 req/s, mostly summary, for 180 s (proves rich_analytics shedding)
+ *   npm run load:demo           the spike, but for 300 s                  (about 2,400 requests)
  *                           long enough to see the proposal, the approval and the recovery in one run
  *
  * "Open loop" means users arrive at random times at a fixed average rate, whether or not the
@@ -40,6 +41,13 @@ const PROFILES: Record<string, Profile> = {
     durationSeconds: 180,
     maxInFlight: 40,
     mix: { '/api/reports?format=pdf': 75, '/api/reports?format=csv': 5, '/api/reports/summary': 10, '/api/checkout': 10 },
+  },
+  // Exercises a completely different bottleneck: saturates concurrency via rich_analytics instead of pdf_export.
+  'summary-spike': {
+    ratePerSecond: 15,
+    durationSeconds: 180,
+    maxInFlight: 40,
+    mix: { '/api/reports/summary': 80, '/api/reports?format=csv': 10, '/api/checkout': 10 },
   },
 };
 // Same traffic as the spike, held long enough for the whole story to play out on camera.

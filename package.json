@@ -14,6 +14,7 @@
     "seed": "tsx scripts/seed-flags.ts",
     "load:baseline": "tsx loadtest/run.ts baseline",
     "load:spike": "tsx loadtest/run.ts spike",
+    "load:summary-spike": "tsx loadtest/run.ts summary-spike",
     "local": "tsx scripts/local-server.ts",
     "llm:try": "tsx agent/scripts/try-llm.ts",
     "load:demo": "tsx loadtest/run.ts demo"
